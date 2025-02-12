@@ -48,6 +48,7 @@ func (m *Message) Validate() error {
 func (m *Message) GetQtdTokens() int {
 	return m.Tokens
 }
+
 func CountTokens(content string) int {
 	return len(strings.Fields(content))
 }

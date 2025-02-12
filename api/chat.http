@@ -1,0 +1,8 @@
+POST http://localhost:8081/chat HTTP/1.1
+Content-Type: application/json
+Authorization: 123456
+
+{
+    "user_id":"i"
+    "user_message":"Ola, qual o seu nome?"
+}
