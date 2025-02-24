@@ -6,10 +6,12 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/lacerda.jcarlos/fclx/chatservice/configs"
+	"github.com/lacerda.jcarlos/fclx/chatservice/internal/infra/grpc/server"
 	"github.com/lacerda.jcarlos/fclx/chatservice/internal/infra/repository"
 	"github.com/lacerda.jcarlos/fclx/chatservice/internal/infra/web"
 	"github.com/lacerda.jcarlos/fclx/chatservice/internal/infra/web/webserver"
 	"github.com/lacerda.jcarlos/fclx/chatservice/internal/usecase/chatcompletion"
+	"github.com/lacerda.jcarlos/fclx/chatservice/internal/usecase/chatcompletionstream"
 	"github.com/sashabaranov/go-openai"
 )
 
@@ -40,7 +42,7 @@ func main() {
 		InitialSystemMessage: configs.InitialChatMessage,
 	}
 
-	/*chatConfigStream := chatcompletionstream.ChatCompletionConfigInputDTO{
+	chatConfigStream := chatcompletionstream.ChatCompletionConfigInputDTO{
 		Model:                configs.Model,
 		ModelMaxTokens:       configs.ModelMaxTokens,
 		Temperature:          float32(configs.Temperature),
@@ -49,22 +51,17 @@ func main() {
 		Stop:                 configs.Stop,
 		MaxTokens:            configs.MaxTokens,
 		InitialSystemMessage: configs.InitialChatMessage,
-	}*/
+	}
 
 	usecase := chatcompletion.NewChatCompletionUseCase(repo, client)
 
-	//streamChannel := make(chan chatcompletionstream.ChatCompletionOutputDTO)
-	//usecaseStream := chatcompletionstream.NewChatCompletionUseCase(repo, client, streamChannel)
+	streamChannel := make(chan chatcompletionstream.ChatCompletionOutputDTO)
+	usecaseStream := chatcompletionstream.NewChatCompletionUseCase(repo, client, streamChannel)
+
+	grpcServer := server.NewGRPCServer(*usecaseStream, chatConfigStream, configs.GRPCServerPort, configs.AuthToken, streamChannel)
+	go grpcServer.Start()
 
 	fmt.Println("Starting gRPC server on port " + configs.GRPCServerPort)
-	/*grpcServer := server.NewGRPCServer(
-		*usecaseStream,
-		chatConfigStream,
-		configs.GRPCServerPort,
-		configs.AuthToken,
-		streamChannel,
-	)
-	go grpcServer.Start()*/
 
 	webserver := webserver.NewWebServer(":" + configs.WebServerPort)
 	webserverChatHandler := web.NewWebChatGPTHandler(*usecase, chatConfig, configs.AuthToken)
@@ -72,4 +69,6 @@ func main() {
 
 	fmt.Println("Server running on port " + configs.WebServerPort)
 	webserver.Start()
+
+	select {}
 }
